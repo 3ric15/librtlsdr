@@ -48,6 +48,7 @@ enum RTL_TCP_COMMANDS {
 #if 1
     /* development branch since 2018-10-03 */
     SET_BIAS_TEE              = 0x0E,
+    SET_DITHERING	      = 0x10, // Added for dithering
     SET_TUNER_BANDWIDTH       = 0x40,
 #else
     /* prev code - used in ExtIO - to build compatible rtl_tcp.exe */

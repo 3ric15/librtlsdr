@@ -126,6 +126,7 @@ void usage(void)
 
 		"\t[-D direct_sampling_mode (default: 0, 1 = I, 2 = Q, 3 = I below threshold, 4 = Q below threshold)]\n"
 		"\t[-D direct_sampling_threshold_frequency (default: 0 use tuner specific frequency threshold for 3 and 4)]\n"
+		"\t[-N no dithering (default: use dithering)]\n" // Added for dithering
 		"\t[-v increase verbosity (default: 0)]\n"
 		, rtlsdr_get_opt_help(1) );
 	exit(1);
@@ -395,6 +396,18 @@ static void *command_worker(void *arg)
 			}
 		}
 		switch(cmd.cmd) {
+		case SET_DITHERING: // Added for dithering
+			tmp = ntohl(cmd.param);
+			if (!tmp) {
+				printf("Disabling dithering...  \n");
+				r = rtlsdr_set_dithering(dev, tmp);
+				if (r) {
+					printf("failure\n");
+				} else {
+					printf("success\n");
+				}
+			}
+			break;
 		case SET_FREQUENCY:
 			tmp = ntohl(cmd.param);
 			if (!freqhi)
@@ -744,6 +757,7 @@ int main(int argc, char **argv)
 	int port_resp = 1;
 	int report_i2c = 0;
 	int do_exit_thrd_ctrl = 0;
+	int dithering = 1; // Added for dithering
 
 	uint64_t frequency = 100000000;
 	uint32_t samp_rate = 2048000;
@@ -787,7 +801,7 @@ int main(int argc, char **argv)
 	struct sigaction sigact, sigign;
 #endif
 
-	opt_str = "a:p:f:g:s:b:n:d:P:O:TI:W:l:w:D:vr:";
+	opt_str = "a:p:f:g:s:b:n:d:N:P:O:TI:W:l:w:D:vr:"; // Added for dithering
 	while ((opt = getopt(argc, argv, opt_str)) != -1) {
 		switch (opt) {
 		case 'd':
@@ -836,6 +850,9 @@ int main(int argc, char **argv)
 			break;
 		case 'T':
 			enable_biastee = 1;
+			break;
+		case 'N': // Added for dithering
+			dithering = 0;
 			break;
 		case 'w':
 			bandwidth = (uint32_t)atofs(optarg);
@@ -888,6 +905,17 @@ int main(int argc, char **argv)
 #else
 	SetConsoleCtrlHandler( (PHANDLER_ROUTINE) sighandler, TRUE );
 #endif
+	// Added for dithering
+	/* Disable dither */
+	if (!dithering) {
+		fprintf(stderr, "Disabling dithering...  ");
+		r = rtlsdr_set_dithering(dev, dithering);
+		if (r) {
+			fprintf(stderr, "failure\n");
+		} else {
+			fprintf(stderr, "success\n");
+		}
+	}
 
 	/* Set the tuner error */
 	verbose_ppm_set(dev, ppm_error);
