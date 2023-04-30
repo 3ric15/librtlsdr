@@ -2587,6 +2587,7 @@ int rtlsdr_get_device_usb_strings(uint32_t index, char *manufact,
 
 			if (index == device_count - 1) {
 				r = libusb_open(list[i], &devt.devh);
+				
 				if (!r) {
 					r = rtlsdr_get_usb_strings(&devt,
 									 manufact,
@@ -2628,8 +2629,10 @@ int rtlsdr_get_index_by_serial(const char *serial)
 
 	for (i = 0; i < cnt; i++) {
 		r = rtlsdr_get_device_usb_strings(i, NULL, NULL, str);
-		if (!r && !strcmp(serial, str))
+
+		if (!r && !strcmp(serial, str)) 
 			return i;
+		
 	}
 
 	return -3;

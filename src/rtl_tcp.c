@@ -119,14 +119,14 @@ void usage(void)
 		"\t[-l length of single buffer in units of 512 samples (default: 32 was 256)]\n"
 		"\t[-n max number of linked list buffers to keep (default: 500)]\n"
 		"\t[-w rtlsdr tuner bandwidth [Hz] (for R820T/2 and E4000 tuners)]\n"
-		"\t[-d device index or serial (default: 0)]\n"
+		"\t[-d device index or :<serial number> (default: 0)]\n"
 		"\t[-P ppm_error (default: 0)]\n"
 		"%s"
 		"\t[-T enable bias-T on GPIO PIN 0 (works for rtl-sdr.com v3 dongles)]\n"
 
 		"\t[-D direct_sampling_mode (default: 0, 1 = I, 2 = Q, 3 = I below threshold, 4 = Q below threshold)]\n"
 		"\t[-D direct_sampling_threshold_frequency (default: 0 use tuner specific frequency threshold for 3 and 4)]\n"
-		"\t[-N no dithering (default: use dithering)]\n" // Added for dithering
+		"\t[-N no dithering (default: use dithering)]\n" 
 		"\t[-v increase verbosity (default: 0)]\n"
 		, rtlsdr_get_opt_help(1) );
 	exit(1);
@@ -396,7 +396,7 @@ static void *command_worker(void *arg)
 			}
 		}
 		switch(cmd.cmd) {
-		case SET_DITHERING: // Added for dithering
+		case SET_DITHERING: 
 			tmp = ntohl(cmd.param);
 			if (!tmp) {
 				printf("Disabling dithering...  \n");
@@ -757,7 +757,7 @@ int main(int argc, char **argv)
 	int port_resp = 1;
 	int report_i2c = 0;
 	int do_exit_thrd_ctrl = 0;
-	int dithering = 1; // Added for dithering
+	int dithering = 1; 
 
 	uint64_t frequency = 100000000;
 	uint32_t samp_rate = 2048000;
@@ -801,11 +801,45 @@ int main(int argc, char **argv)
 	struct sigaction sigact, sigign;
 #endif
 
-	opt_str = "a:p:f:g:s:b:n:d:N:P:O:TI:W:l:w:D:vr:"; // Added for dithering
+	opt_str = "a:p:f:g:s:b:n:d:N:P:O:TI:W:l:w:D:vr:";
 	while ((opt = getopt(argc, argv, opt_str)) != -1) {
 		switch (opt) {
 		case 'd':
-			dev_index = verbose_device_search(optarg);
+			if(optarg[0] == ':') {
+				char dev_arg[8];
+				int device_count, rc;
+				char vendor[256] = {0}, product[256] = {0}, serial[256] = {0};
+				
+				device_count = rtlsdr_get_device_count();
+
+				fprintf(stderr, "Found %d device(s):\n", device_count);
+				for (i = 0; i < device_count; i++) {
+					memset(&vendor[0],  0, 256 * sizeof(char));
+					memset(&product[0], 0, 256 * sizeof(char));
+					memset(&serial[0],  0, 256 * sizeof(char));
+					rc = rtlsdr_get_device_usb_strings(i, vendor, product, serial);
+					if ( rc == 0 )
+						fprintf(stderr, "  %d:  %s, %s, SN: %s\n", i, vendor, product, serial);
+					else
+						fprintf(stderr, "  %d:  %s\n", i, "Failed to query data");
+				}
+				fprintf(stderr, "\n");
+
+				memcpy(dev_arg, &optarg[1], 8);
+				dev_index = rtlsdr_get_index_by_serial(dev_arg);
+
+				if(dev_index < 0) {
+					fprintf(stderr, "Could not find RTL-SDR by serial number\n");
+					exit(1);
+				}
+				else {
+					fprintf(stderr, "Using device %d: %s\n",
+						dev_index, rtlsdr_get_device_name((uint32_t)dev_index));
+				}
+			}
+			else {
+				dev_index = verbose_device_search(optarg);
+			}
 			dev_given = 1;
 			break;
 		case 'f':
@@ -851,7 +885,7 @@ int main(int argc, char **argv)
 		case 'T':
 			enable_biastee = 1;
 			break;
-		case 'N': // Added for dithering
+		case 'N': 
 			dithering = 0;
 			break;
 		case 'w':
@@ -905,7 +939,6 @@ int main(int argc, char **argv)
 #else
 	SetConsoleCtrlHandler( (PHANDLER_ROUTINE) sighandler, TRUE );
 #endif
-	// Added for dithering
 	/* Disable dither */
 	if (!dithering) {
 		fprintf(stderr, "Disabling dithering...  ");
